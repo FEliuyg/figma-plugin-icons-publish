@@ -1,20 +1,14 @@
 {
   "name": "figma-plugin-icons-publish",
-  "id": "1385469544791148001",
+  "id": "1385502251278111253",
   "api": "1.0.0",
   "main": "code.js",
-  "capabilities": [
-    "inspect"
-  ],
+  "capabilities": [],
   "enableProposedApi": false,
   "documentAccess": "dynamic-page",
-  "editorType": [
-    "dev"
-  ],
+  "editorType": ["figma"],
   "ui": "ui.html",
   "networkAccess": {
-    "allowedDomains": [
-      "none"
-    ]
+    "allowedDomains": ["*"]
   }
 }

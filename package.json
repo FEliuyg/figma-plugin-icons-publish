@@ -1,7 +1,14 @@
 {
   "name": "figma-plugin-icons-publish",
   "version": "1.0.0",
-  "description": "a Figma Plugin for publish enterprise icons",
+  "description": "A Figma Plugin to publish enterprise icons",
+  "keywords": [
+    "figma",
+    "plugin",
+    "icons"
+  ],
+  "repository": "https://github.com/xiaoyao1991/figma-plugin-icons-publish",
+  "type": "module",
   "main": "code.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
