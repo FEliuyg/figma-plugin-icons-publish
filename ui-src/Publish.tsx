@@ -5,9 +5,13 @@ interface PublishProps {
 }
 
 export default function Publish({ onReset }: PublishProps) {
+  const handlePublish = () => {
+    parent.postMessage({ pluginMessage: { type: 'getIcons' } }, '*');
+  };
+
   return (
     <div className='flex'>
-      <Button>Publish</Button>
+      <Button onClick={handlePublish}>Publish</Button>
       <Button isSecondary className='ml-4' onClick={onReset}>
         Reset Config
       </Button>

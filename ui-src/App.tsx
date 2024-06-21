@@ -24,6 +24,9 @@ export default function App() {
           setMode('publish');
           break;
         }
+        case 'getIconsSuccess': {
+          console.log('icons:', data);
+        }
       }
     };
   }, []);
