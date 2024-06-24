@@ -17,16 +17,19 @@ export interface RepoInfo {
   url: string;
   token: string;
   projectId: string;
+  branch: string;
 }
 
 interface SettingsProps {
   data?: RepoInfo;
+  onOK: (repoInfo: RepoInfo) => void;
 }
 
-export default function Settings({ data }: SettingsProps) {
+export default function Settings({ data, onOK }: SettingsProps) {
   const [repoInfo, setRepoInfo] = useState<RepoInfo>(
     data ?? {
       type: 'gitlab',
+      branch: 'master',
       url: '',
       token: '',
       projectId: '',
@@ -40,6 +43,7 @@ export default function Settings({ data }: SettingsProps) {
   const handleSave = () => {
     if (repoInfo.type && repoInfo.url && repoInfo.token && repoInfo.projectId) {
       parent.postMessage({ pluginMessage: { type: 'saveData', data: repoInfo } }, '*');
+      onOK(repoInfo);
     } else {
       // 提示用户输入完整信息
       parent.postMessage(
@@ -51,7 +55,7 @@ export default function Settings({ data }: SettingsProps) {
 
   return (
     <div>
-      {/* <div>
+      <div>
         <Label className='text-black'>
           <span className='text-red-500'>*</span>Repo Type:
         </Label>
@@ -63,7 +67,7 @@ export default function Settings({ data }: SettingsProps) {
             handleValueChange('type')(option.value as RepoInfo['type']);
           }}
         />
-      </div> */}
+      </div>
 
       <div>
         <Label className='text-black'>
@@ -74,6 +78,19 @@ export default function Settings({ data }: SettingsProps) {
           placeholder='please enter repo url'
           onChange={(value) => {
             handleValueChange('url')(value);
+          }}
+        />
+      </div>
+
+      <div>
+        <Label className='text-black'>
+          <span className='text-red-500'>*</span>Default Branch:
+        </Label>
+        <Input
+          defaultValue={repoInfo.branch}
+          placeholder='please enter default branch'
+          onChange={(value) => {
+            handleValueChange('branch')(value);
           }}
         />
       </div>

@@ -1,4 +1,6 @@
 import { RepoInfo } from '../Settings';
+import { diffCache, generateCaches, getNextVersion } from './helper';
+import { IconsProps } from './publish';
 
 const getHeaders = (token: string) => {
   return {
@@ -7,21 +9,25 @@ const getHeaders = (token: string) => {
   };
 };
 
-export const getContent = (filePath: string, gitlabData: RepoInfo) => {
+export const getContent = (filePath: string, gitlabData: RepoInfo, branch?: string) => {
   if (gitlabData && gitlabData.url && gitlabData.projectId && gitlabData.token && filePath) {
     return fetch(
-      `${getUrlOrigin(gitlabData.url)}/api/v4/projects/${gitlabData.projectId}/repository/files/${filePath}/raw?ref=master`,
+      `${getUrlOrigin(gitlabData.url)}/api/v4/projects/${gitlabData.projectId}/repository/files/${filePath}/raw?ref=${branch || gitlabData.branch}`,
       {
         headers: getHeaders(gitlabData.token),
       }
-    ).then((response) => response.json());
+    ).then((response) => {
+      if (response.ok) {
+        return response.json();
+      }
+    });
   }
 };
 
 export const createBranch = async (gitlabData: RepoInfo) => {
   const branchName = `figma-update-${new Date().getTime()}`;
   return fetch(
-    `${getUrlOrigin(gitlabData.url)}/api/v4/projects/${gitlabData.projectId}/repository/branches?branch=${branchName}&ref=master`,
+    `${getUrlOrigin(gitlabData.url)}/api/v4/projects/${gitlabData.projectId}/repository/branches?branch=${branchName}&ref=${gitlabData.branch}`,
     {
       headers: {
         'PRIVATE-TOKEN': `${gitlabData.token}`,
@@ -31,7 +37,7 @@ export const createBranch = async (gitlabData: RepoInfo) => {
   ).then((response) => response.json());
 };
 
-export const updatePackage = (
+export const updatePackage = async (
   message: string,
   contents: string,
   branch: string,
@@ -54,7 +60,7 @@ export const updatePackage = (
   ).then((response) => response.json());
 };
 
-export const createMergeRequest = (
+export const createMergeRequest = async (
   title: string,
   content: string,
   branchName: string,
@@ -64,7 +70,7 @@ export const createMergeRequest = (
     title,
     description: content,
     source_branch: branchName,
-    target_branch: 'master',
+    target_branch: gitlabData.branch,
     remove_source_branch: true,
   };
   return fetch(
@@ -137,7 +143,13 @@ export async function createFile(
   );
 }
 
-export async function createCommits(commits: string, branch: string, gitlabData: RepoInfo) {
+interface CommitProps {
+  action: string;
+  file_path: string;
+  content?: string;
+}
+
+export async function createCommits(commits: CommitProps[], branch: string, gitlabData: RepoInfo) {
   const body = JSON.stringify({
     branch,
     commit_message: '[Figma]: add icons',
@@ -160,4 +172,74 @@ export async function createCommits(commits: string, branch: string, gitlabData:
 
 export function getUrlOrigin(url: string) {
   return new URL(url).origin;
+}
+
+export async function gitlabPublish(gitlabData: RepoInfo, icons: IconsProps[]) {
+  // 0. generate icons cache
+  // 1. create a new branch
+  // 2. get content of package.json
+  // 3. get content of cache.json
+  // 4. diff cache.json
+  // 5. create a commit
+  // 6. create a merge request
+  // 7. wait for merge request to be merged
+
+  const newCaches = generateCaches(icons);
+  const { name: branchName } = await createBranch(gitlabData);
+  const packageJson = await getContent('package.json', gitlabData, branchName);
+  packageJson.version = getNextVersion(packageJson.version);
+  const preCaches = await getContent('cache.json', gitlabData, branchName);
+  const diffResult = diffCache(newCaches, preCaches);
+
+  if (diffResult.length === 0) {
+    throw Error('There is nothing to update');
+  }
+
+  const commits: CommitProps[] = [
+    {
+      action: 'update',
+      file_path: 'package.json',
+      content: JSON.stringify(packageJson, null, 2),
+    },
+    {
+      action: preCaches ? 'update' : 'create',
+      file_path: 'cache.json',
+      content: JSON.stringify(newCaches, null, 2),
+    },
+    ...diffResult.map((d) => {
+      const icon = icons.find((icon) => icon.id === d.id);
+      return {
+        action: d.action,
+        file_path: `src/svg/${d.componentName}.svg`,
+        content: d.action === 'delete' ? undefined : new TextDecoder().decode(icon?.content),
+      };
+    }),
+  ];
+
+  await createCommits(commits, branchName, gitlabData);
+
+  let message = '';
+  const getTypeSvgs = (type: 'update' | 'create' | 'delete') =>
+    diffResult.filter((d) => d.action === type).map((d) => d.componentName);
+  const addedSvgs = getTypeSvgs('create');
+  const updatedSvgs = getTypeSvgs('update');
+  const deletedSvgs = getTypeSvgs('delete');
+  if (addedSvgs.length) {
+    message += `add：${addedSvgs.join(',')}\n`;
+  }
+  if (updatedSvgs.length) {
+    message += `update：${addedSvgs.join(',')}\n`;
+  }
+  if (updatedSvgs.length) {
+    message += `delete：${deletedSvgs.join(',')}\n`;
+  }
+
+  const { iid } = await createMergeRequest(
+    `[figma]: update to ${packageJson.version}`,
+    message,
+    branchName,
+    gitlabData
+  );
+
+  await acceptMergeRequest(iid, gitlabData);
 }

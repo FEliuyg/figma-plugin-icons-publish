@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Publish from './Publish';
 import Settings, { RepoInfo } from './Settings';
+import { publishIcons } from './utils/publish';
 
 export default function App() {
   const [mode, setMode] = useState<'edit' | 'publish'>('edit');
   const [repoInfo, setRepoInfo] = useState<RepoInfo>();
+  const repoInfoRef = useRef(repoInfo);
+  repoInfoRef.current = repoInfo;
 
   useEffect(() => {
     // initialize to get settings info
@@ -25,7 +28,8 @@ export default function App() {
           break;
         }
         case 'getIconsSuccess': {
-          console.log('icons:', data);
+          publishIcons(repoInfoRef.current!, data.data);
+          break;
         }
       }
     };
@@ -36,7 +40,7 @@ export default function App() {
       {mode === 'publish' ? (
         <Publish onReset={() => setMode('edit')} />
       ) : (
-        <Settings data={repoInfo} />
+        <Settings data={repoInfo} onOK={setRepoInfo} />
       )}
     </div>
   );
