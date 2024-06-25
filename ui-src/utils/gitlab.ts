@@ -182,7 +182,7 @@ export async function gitlabPublish(gitlabData: RepoInfo, icons: IconsProps[]) {
   // 4. diff cache.json
   // 5. create a commit
   // 6. create a merge request
-  // 7. wait for merge request to be merged
+  // 7. accept merge request to be merged
 
   const newCaches = generateCaches(icons);
   const { name: branchName } = await createBranch(gitlabData);

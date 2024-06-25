@@ -1,4 +1,5 @@
 import { RepoInfo } from '../Settings';
+import { githubPublish } from './github';
 import { gitlabPublish } from './gitlab';
 
 export interface IconsProps {
@@ -12,6 +13,6 @@ export async function publishIcons(params: RepoInfo, icons: IconsProps[]) {
   if (params.type === 'gitlab') {
     return gitlabPublish(params, icons);
   } else {
-    // TODO: Add other types of publishing
+    return githubPublish(params, icons);
   }
 }
